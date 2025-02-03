@@ -1,310 +1,3 @@
-// import React, { useState, useEffect } from "react";
-// import { db } from "../firabse/Fireabase";
-// import {
-//   collection,
-//   addDoc,
-//   getDocs,
-//   deleteDoc,
-//   doc,
-//   updateDoc,
-// } from "firebase/firestore";
-// import { jsPDF } from "jspdf";
-// import "jspdf-autotable"; // Importing jsPDF autoTable plugin
-
-// function Truck1() {
-//   const currentDate = new Date().toISOString().split("T")[0];
-
-//   const [formData, setFormData] = useState({
-//     date: currentDate,
-//     driverName: "",
-//     jobs: "",
-//     fuel: "",
-//     services: "",
-//     extraCharges: "",
-//     id: null, // To store the document ID for editing
-//   });
-
-//   const [rows, setRows] = useState([]);
-//   const [loading, setLoading] = useState(false);
-
-//   // Fetch data from Firestore
-//   const fetchData = async () => {
-//     setLoading(true);
-//     try {
-//       const querySnapshot = await getDocs(collection(db, "truckData"));
-//       const data = querySnapshot.docs.map((doc) => ({
-//         id: doc.id,
-//         ...doc.data(),
-//       }));
-
-//       // Sort data in descending order by date
-//       data.sort((a, b) => new Date(b.date) - new Date(a.date));
-
-//       setRows(data);
-//     } catch (error) {
-//       console.error("Error fetching data: ", error);
-//     } finally {
-//       setLoading(false);
-//     }
-//   };
-
-//   // Save data to Firestore
-//   const saveData = async (e) => {
-//     e.preventDefault();
-//     setLoading(true);
-
-//     try {
-//       if (formData.id) {
-//         // Update the document if ID is present (edit case)
-//         const docRef = doc(db, "truckData", formData.id);
-//         await updateDoc(docRef, {
-//           date: formData.date,
-//           driverName: formData.driverName,
-//           jobs: formData.jobs,
-//           fuel: formData.fuel,
-//           services: formData.services,
-//           extraCharges: formData.extraCharges,
-//         });
-//       } else {
-//         // Add new document
-//         await addDoc(collection(db, "truckData"), {
-//           date: formData.date,
-//           driverName: formData.driverName,
-//           jobs: formData.jobs,
-//           fuel: formData.fuel,
-//           services: formData.services,
-//           extraCharges: formData.extraCharges,
-//         });
-//       }
-
-//       // Reset form
-//       setFormData({
-//         date: currentDate,
-//         driverName: "",
-//         jobs: "",
-//         fuel: "",
-//         services: "",
-//         extraCharges: "",
-//         id: null, // Reset ID after save
-//       });
-
-//       // Fetch updated data
-//       fetchData();
-//     } catch (error) {
-//       console.error("Error saving document: ", error);
-//     } finally {
-//       setLoading(false);
-//     }
-//   };
-
-//   // Delete data from Firestore
-//   const deleteData = async (id) => {
-//     setLoading(true);
-//     try {
-//       const docRef = doc(db, "truckData", id);
-//       await deleteDoc(docRef);
-//       fetchData(); // Fetch updated data after deletion
-//     } catch (error) {
-//       console.error("Error deleting document: ", error);
-//     } finally {
-//       setLoading(false);
-//     }
-//   };
-
-//   // Edit data and populate the form
-//   const editData = (row) => {
-//     setFormData({
-//       date: row.date,
-//       driverName: row.driverName,
-//       jobs: row.jobs,
-//       fuel: row.fuel,
-//       services: row.services,
-//       extraCharges: row.extraCharges,
-//       id: row.id, // Set the document ID for updating
-//     });
-//   };
-
-//   const handleInputChange = (e) => {
-//     const { name, value } = e.target;
-//     setFormData((prev) => ({
-//       ...prev,
-//       [name]: value,
-//     }));
-//   };
-
-//   // Export data to PDF
-//   const exportToPDF = () => {
-//     const doc = new jsPDF();
-
-//     // Set the title
-//     doc.setFontSize(18);
-//     doc.text("Truck1 Data Report", 14, 20);
-
-//     // Set the table headers
-//     const headers = [
-//       "S No",
-//       "Date",
-//       "Driver Name",
-//       "Jobs",
-//       "Fuel",
-//       "Services",
-//       "Extra Charges",
-//     ];
-
-//     // Prepare the table data
-//     const tableData = rows.map((row, index) => [
-//       index + 1,
-//       row.date,
-//       row.driverName,
-//       row.jobs,
-//       row.fuel,
-//       row.services,
-//       row.extraCharges,
-//     ]);
-
-//     // Add the table to the PDF
-//     doc.autoTable({
-//       head: [headers],
-//       body: tableData,
-//       startY: 30,
-//       theme: "grid",
-//     });
-
-//     // Save the generated PDF
-//     doc.save("truck_data_report.pdf");
-//   };
-
-//   useEffect(() => {
-//     fetchData();
-//   }, []);
-
-//   return (
-//     <div className="p-6">
-//       {/* Input Form */}
-//       <form onSubmit={saveData} className="mb-6 space-y-4">
-//         <div className="flex space-x-4">
-//           <input
-//             type="date"
-//             name="date"
-//             value={formData.date}
-//             onChange={handleInputChange}
-//             className="border p-2 rounded-md"
-//           />
-//           <input
-//             type="text"
-//             name="driverName"
-//             placeholder="Driver Name"
-//             value={formData.driverName}
-//             onChange={handleInputChange}
-//             className="border p-2 rounded-md"
-//           />
-//           <input
-//             type="text"
-//             name="jobs"
-//             placeholder="Jobs"
-//             value={formData.jobs}
-//             onChange={handleInputChange}
-//             className="border p-2 rounded-md"
-//           />
-//           <input
-//             type="text"
-//             name="fuel"
-//             placeholder="Fuel"
-//             value={formData.fuel}
-//             onChange={handleInputChange}
-//             className="border p-2 rounded-md"
-//           />
-//           <input
-//             type="text"
-//             name="services"
-//             placeholder="Services"
-//             value={formData.services}
-//             onChange={handleInputChange}
-//             className="border p-2 rounded-md"
-//           />
-//           <input
-//             type="text"
-//             name="extraCharges"
-//             placeholder="Extra Charges"
-//             value={formData.extraCharges}
-//             onChange={handleInputChange}
-//             className="border p-2 rounded-md"
-//           />
-//           <button
-//             type="submit"
-//             className="bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-700"
-//           >
-//             {formData.id ? "Update" : "Save"}
-//           </button>
-//         </div>
-//       </form>
-
-//       {/* Export to PDF Button */}
-//       <div className="mb-4">
-//         <button
-//           onClick={exportToPDF}
-//           className="bg-green-500 text-white py-2 px-4 rounded-md hover:bg-green-700"
-//         >
-//           Export to PDF
-//         </button>
-//       </div>
-
-//       {/* Display Loading or Saved Data */}
-//       {loading ? (
-//         <div className="flex justify-center items-center">
-//           <p>Loading...</p>
-//         </div>
-//       ) : (
-//         <div className="overflow-x-auto">
-//           <table className="table-auto w-full border border-gray-300">
-//             <thead>
-//               <tr>
-//                 <th className="border px-4 py-2">S No</th>
-//                 <th className="border px-4 py-2">Date</th>
-//                 <th className="border px-4 py-2">Driver Name</th>
-//                 <th className="border px-4 py-2">Jobs</th>
-//                 <th className="border px-4 py-2">Fuel</th>
-//                 <th className="border px-4 py-2">Services</th>
-//                 <th className="border px-4 py-2">Extra Charges</th>
-//                 <th className="border px-4 py-2">Actions</th>
-//               </tr>
-//             </thead>
-//             <tbody>
-//               {rows.map((row, index) => (
-//                 <tr key={row.id}>
-//                   <td className="border px-4 py-2">{index + 1}</td>
-//                   <td className="border px-4 py-2">{row.date}</td>
-//                   <td className="border px-4 py-2">{row.driverName}</td>
-//                   <td className="border px-4 py-2">{row.jobs}</td>
-//                   <td className="border px-4 py-2">{row.fuel}</td>
-//                   <td className="border px-4 py-2">{row.services}</td>
-//                   <td className="border px-4 py-2">{row.extraCharges}</td>
-//                   <td className="border px-4 py-2">
-//                     <button
-//                       onClick={() => editData(row)}
-//                       className="bg-yellow-500 text-white py-1 px-3 rounded-md hover:bg-yellow-700 mr-2"
-//                     >
-//                       Edit
-//                     </button>
-//                     <button
-//                       onClick={() => deleteData(row.id)}
-//                       className="bg-red-500 text-white py-1 px-3 rounded-md hover:bg-red-700"
-//                     >
-//                       Delete
-//                     </button>
-//                   </td>
-//                 </tr>
-//               ))}
-//             </tbody>
-//           </table>
-//         </div>
-//       )}
-//     </div>
-//   );
-// }
-
-// export default Truck1;
-
 import React, { useState, useEffect } from "react";
 import { db } from "../firabse/Fireabase";
 import {
@@ -332,11 +25,11 @@ function Truck1() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // Existing fetch, save, delete, and edit functions remain the same
+  // Fetch data from Firestore (using 'Truck1' collection)
   const fetchData = async () => {
     setLoading(true);
     try {
-      const querySnapshot = await getDocs(collection(db, "truckData"));
+      const querySnapshot = await getDocs(collection(db, "Truck1"));
       const data = querySnapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
@@ -350,12 +43,13 @@ function Truck1() {
     }
   };
 
+  // Save data to Firestore
   const saveData = async (e) => {
     e.preventDefault();
     setLoading(true);
     try {
       if (formData.id) {
-        const docRef = doc(db, "truckData", formData.id);
+        const docRef = doc(db, "Truck1", formData.id);
         await updateDoc(docRef, {
           date: formData.date,
           driverName: formData.driverName,
@@ -365,7 +59,7 @@ function Truck1() {
           extraCharges: formData.extraCharges,
         });
       } else {
-        await addDoc(collection(db, "truckData"), {
+        await addDoc(collection(db, "Truck1"), {
           date: formData.date,
           driverName: formData.driverName,
           jobs: formData.jobs,
@@ -391,18 +85,25 @@ function Truck1() {
     }
   };
 
+  // Delete data from Firestore with confirmation
   const deleteData = async (id) => {
-    setLoading(true);
-    try {
-      await deleteDoc(doc(db, "truckData", id));
-      fetchData();
-    } catch (error) {
-      console.error("Error deleting document: ", error);
-    } finally {
-      setLoading(false);
+    const isConfirmed = window.confirm(
+      "Are you sure you want to delete this entry?"
+    );
+    if (isConfirmed) {
+      setLoading(true);
+      try {
+        await deleteDoc(doc(db, "Truck1", id));
+        fetchData();
+      } catch (error) {
+        console.error("Error deleting document: ", error);
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
+  // Edit data and populate the form
   const editData = (row) => {
     setFormData({
       date: row.date,
@@ -423,6 +124,7 @@ function Truck1() {
     }));
   };
 
+  // Export data to PDF
   const exportToPDF = () => {
     const doc = new jsPDF();
     doc.setFontSize(18);
