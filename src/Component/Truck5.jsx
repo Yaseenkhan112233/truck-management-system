@@ -149,7 +149,12 @@ function Truck5() {
     const { name, value } = e.target;
 
     // For fields fuel, services, and extraCharges, handle both numbers and strings
-    if (name === "fuel" || name === "services" || name === "extraCharges") {
+    if (
+      name === "fuel" ||
+      name === "services" ||
+      name === "extraCharges" ||
+      name === "jobs"
+    ) {
       setFormData((prev) => ({
         ...prev,
         [name]: value,
@@ -172,12 +177,13 @@ function Truck5() {
     return match ? parseFloat(match[0]) : 0; // Return the first matched number or 0 if no match
   };
 
-  // Calculate total based on Fuel, Services, and Extra Charges
+  // Calculate total based on Jobs, Fuel, Services, and Extra Charges
   const calculateTotal = (updatedFormData) => {
+    const jobs = extractNumber(updatedFormData.jobs);
     const fuel = extractNumber(updatedFormData.fuel);
     const services = extractNumber(updatedFormData.services);
     const extraCharges = extractNumber(updatedFormData.extraCharges);
-    const total = fuel + services + extraCharges;
+    const total = jobs + fuel + services + extraCharges; // Sum jobs, fuel, services, and extra charges
 
     setFormData((prev) => ({
       ...prev,
