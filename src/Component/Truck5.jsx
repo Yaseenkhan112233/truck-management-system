@@ -21,20 +21,40 @@ function Truck5() {
     services: "",
     extraCharges: "",
     id: null,
+    total: 0,
   });
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [month, setMonth] = useState(new Date().getMonth() + 1); // Current month
+  const [year, setYear] = useState(new Date().getFullYear()); // Current year
+  const rowsPerPage = 10;
 
-  // Fetch data from Firestore (using 'Truck5' collection)
+  // Fetch data from Firestore (using 'Truck5' collection) and sort most recent first
   const fetchData = async () => {
     setLoading(true);
     try {
       const querySnapshot = await getDocs(collection(db, "Truck5"));
-      const data = querySnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-      data.sort((a, b) => new Date(b.date) - new Date(a.date));
+      const data = querySnapshot.docs.map((doc) => {
+        const docData = doc.data();
+        let date;
+        if (docData.date && docData.date.seconds) {
+          date = new Date(docData.date.seconds * 1000); // Convert Firestore Timestamp to JavaScript Date
+        } else {
+          date = new Date(docData.date); // If it's already a string, parse as Date
+        }
+
+        return {
+          id: doc.id,
+          ...docData,
+          date: date.toISOString(), // Ensure it's stored as ISO string for sorting
+        };
+      });
+
+      // Sort the data in descending order (newest first)
+      data.sort((a, b) => new Date(b.date) - new Date(a.date)); // Correct sorting order
+
+      // Update rows with sorted data
       setRows(data);
     } catch (error) {
       console.error("Error fetching data: ", error);
@@ -43,7 +63,7 @@ function Truck5() {
     }
   };
 
-  // Save data to Firestore
+  // Save data to Firestore, including total
   const saveData = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -57,17 +77,22 @@ function Truck5() {
           fuel: formData.fuel,
           services: formData.services,
           extraCharges: formData.extraCharges,
+          total: formData.total, // Save total to Firestore
         });
       } else {
+        // Ensure date is stored in a consistent format
         await addDoc(collection(db, "Truck5"), {
-          date: formData.date,
+          date: new Date(), // Store the current date/time when saved
           driverName: formData.driverName,
           jobs: formData.jobs,
           fuel: formData.fuel,
           services: formData.services,
           extraCharges: formData.extraCharges,
+          total: formData.total, // Save total to Firestore
         });
       }
+
+      // Reset the form after saving
       setFormData({
         date: currentDate,
         driverName: "",
@@ -75,9 +100,12 @@ function Truck5() {
         fuel: "",
         services: "",
         extraCharges: "",
+        total: 0,
         id: null,
       });
-      fetchData();
+
+      // Re-fetch and sort data after saving
+      fetchData(); // Call fetchData to ensure the table is updated immediately
     } catch (error) {
       console.error("Error saving document: ", error);
     } finally {
@@ -94,7 +122,7 @@ function Truck5() {
       setLoading(true);
       try {
         await deleteDoc(doc(db, "Truck5", id));
-        fetchData();
+        fetchData(); // Re-fetch data after deleting
       } catch (error) {
         console.error("Error deleting document: ", error);
       } finally {
@@ -112,23 +140,100 @@ function Truck5() {
       fuel: row.fuel,
       services: row.services,
       extraCharges: row.extraCharges,
+      total: row.total, // Set total from Firestore
       id: row.id,
     });
   };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
+
+    // For fields fuel, services, and extraCharges, handle both numbers and strings
+    if (name === "fuel" || name === "services" || name === "extraCharges") {
+      setFormData((prev) => ({
+        ...prev,
+        [name]: value,
+      }));
+      calculateTotal({
+        ...formData,
+        [name]: value,
+      });
+    } else {
+      setFormData((prev) => ({
+        ...prev,
+        [name]: value,
+      }));
+    }
+  };
+
+  // Extract number from a string (e.g., "300 (given by Yaseen)" -> 300)
+  const extractNumber = (input) => {
+    const match = input.match(/[\d\.]+/); // Regular expression to match numbers
+    return match ? parseFloat(match[0]) : 0; // Return the first matched number or 0 if no match
+  };
+
+  // Calculate total based on Fuel, Services, and Extra Charges
+  const calculateTotal = (updatedFormData) => {
+    const fuel = extractNumber(updatedFormData.fuel);
+    const services = extractNumber(updatedFormData.services);
+    const extraCharges = extractNumber(updatedFormData.extraCharges);
+    const total = fuel + services + extraCharges;
+
     setFormData((prev) => ({
       ...prev,
-      [name]: value,
+      total, // Set the total value
     }));
   };
 
-  // Export data to PDF
+  // Calculate overall total of the total column
+  const calculateOverallTotal = () => {
+    return rows.reduce((acc, row) => acc + (row.total || 0), 0);
+  };
+
+  // Handle pagination
+  const handleNextPage = () => {
+    if (currentPage * rowsPerPage < rows.length) {
+      setCurrentPage((prevPage) => prevPage + 1);
+    }
+  };
+
+  const handlePreviousPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage((prevPage) => prevPage - 1);
+    }
+  };
+
+  // Paginate rows based on the current page
+  const paginatedRows = rows.slice(
+    (currentPage - 1) * rowsPerPage,
+    currentPage * rowsPerPage
+  );
+
+  // Filter data by month and year
+  const filterByDate = (data) => {
+    return data.filter((row) => {
+      const rowDate = new Date(row.date);
+      return rowDate.getFullYear() === year && rowDate.getMonth() + 1 === month;
+    });
+  };
+
+  // Handle filtering
+  const handleMonthChange = (e) => {
+    setMonth(e.target.value);
+    setCurrentPage(1);
+  };
+
+  const handleYearChange = (e) => {
+    setYear(e.target.value);
+    setCurrentPage(1);
+  };
+
+  // Export data to PDF, including overall total, in the same format as displayed
   const exportToPDF = () => {
     const doc = new jsPDF();
     doc.setFontSize(18);
     doc.text("Truck5 Data Report", 14, 20);
+
     const headers = [
       "S No",
       "Date",
@@ -137,7 +242,9 @@ function Truck5() {
       "Fuel",
       "Services",
       "Extra Charges",
+      "Total",
     ];
+
     const tableData = rows.map((row, index) => [
       index + 1,
       row.date,
@@ -146,13 +253,74 @@ function Truck5() {
       row.fuel,
       row.services,
       row.extraCharges,
+      row.total,
     ]);
+
+    // First, create the main table without totals
     doc.autoTable({
       head: [headers],
       body: tableData,
       startY: 30,
       theme: "grid",
+      styles: {
+        cellPadding: 2,
+        fontSize: 10,
+      },
+      columnStyles: {
+        4: { halign: "right" }, // Fuel column
+        5: { halign: "right" }, // Services column
+        6: { halign: "right" }, // Extra Charges column
+        7: { halign: "right" }, // Total column
+      },
     });
+
+    // Calculate totals
+    const totalFuel = rows.reduce(
+      (acc, row) => acc + (parseFloat(row.fuel) || 0),
+      0
+    );
+    const totalServices = rows.reduce(
+      (acc, row) => acc + (parseFloat(row.services) || 0),
+      0
+    );
+    const totalExtraCharges = rows.reduce(
+      (acc, row) => acc + (parseFloat(row.extraCharges) || 0),
+      0
+    );
+    const overallTotal = calculateOverallTotal();
+
+    // Create totals row in a separate table
+    const totalsData = [
+      [
+        "FUEL ", // S No
+        totalFuel.toFixed(2), // Fuel total
+        "SERVICE ", // Date
+        totalServices.toFixed(2), // Services total
+        "EXTRA ", // Driver Name
+        totalExtraCharges.toFixed(2), // Extra Charges total
+        "OVERALL :", // Jobs
+        overallTotal.toFixed(2), // Overall total
+      ],
+    ];
+
+    // Add the totals table with some spacing
+    doc.autoTable({
+      body: totalsData,
+      startY: doc.lastAutoTable.finalY + 5, // Add 5 units of space
+      theme: "grid",
+      styles: {
+        cellPadding: 2,
+        fontSize: 10,
+      },
+      columnStyles: {
+        4: { halign: "right" }, // Fuel column
+        5: { halign: "right" }, // Services column
+        6: { halign: "right" }, // Extra Charges column
+        7: { halign: "right" }, // Total column
+      },
+    });
+
+    // Save the generated PDF
     doc.save("truck_data_report.pdf");
   };
 
@@ -160,8 +328,42 @@ function Truck5() {
     fetchData();
   }, []);
 
+  const filteredRows = filterByDate(rows);
+
   return (
     <div className="p-4 md:p-6 max-w-full overflow-hidden">
+      {/* Filter by Month and Year */}
+      <div className="flex justify-between mb-6">
+        <div>
+          <label className="mr-4">Month:</label>
+          <select
+            value={month}
+            onChange={handleMonthChange}
+            className="border p-2 rounded-md"
+          >
+            {Array.from({ length: 12 }, (_, i) => (
+              <option key={i} value={i + 1}>
+                {new Date(0, i).toLocaleString("default", { month: "long" })}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="mr-4">Year:</label>
+          <select
+            value={year}
+            onChange={handleYearChange}
+            className="border p-2 rounded-md"
+          >
+            {Array.from({ length: 10 }, (_, i) => (
+              <option key={i} value={new Date().getFullYear() - i}>
+                {new Date().getFullYear() - i}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
       {/* Responsive Form */}
       <form onSubmit={saveData} className="mb-6">
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
@@ -213,6 +415,18 @@ function Truck5() {
             className="w-full border p-2 rounded-md"
           />
         </div>
+
+        {/* Total Input Field */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mt-4">
+          <input
+            type="text"
+            name="total"
+            value={formData.total.toFixed(2)}
+            readOnly
+            className="w-full border p-2 rounded-md bg-gray-100 text-center"
+          />
+        </div>
+
         <div className="mt-4">
           <button
             type="submit"
@@ -268,12 +482,15 @@ function Truck5() {
                       Extra Charges
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Total
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Actions
                     </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {rows.map((row, index) => (
+                  {paginatedRows.map((row, index) => (
                     <tr key={row.id} className="hover:bg-gray-50">
                       <td className="px-4 py-2 whitespace-nowrap text-sm">
                         {index + 1}
@@ -297,6 +514,9 @@ function Truck5() {
                         {row.extraCharges}
                       </td>
                       <td className="px-4 py-2 whitespace-nowrap text-sm">
+                        {row.total}
+                      </td>
+                      <td className="px-4 py-2 whitespace-nowrap text-sm">
                         <div className="flex space-x-2">
                           <button
                             onClick={() => editData(row)}
@@ -314,12 +534,42 @@ function Truck5() {
                       </td>
                     </tr>
                   ))}
+                  {/* Overall Total Row */}
+                  <tr>
+                    <td
+                      colSpan="7"
+                      className="text-right px-4 py-2 text-sm font-medium text-gray-500"
+                    >
+                      Overall Total
+                    </td>
+                    <td className="px-4 py-2 text-sm font-medium text-gray-500">
+                      {calculateOverallTotal().toFixed(2)}
+                    </td>
+                  </tr>
                 </tbody>
               </table>
             </div>
           </div>
         </div>
       )}
+
+      {/* Pagination Controls */}
+      <div className="mb-4 flex justify-between mt-4">
+        <button
+          onClick={handlePreviousPage}
+          disabled={currentPage === 1}
+          className="bg-gray-500 text-white py-2 px-4 rounded-md"
+        >
+          Previous
+        </button>
+        <button
+          onClick={handleNextPage}
+          disabled={currentPage * rowsPerPage >= filteredRows.length}
+          className="bg-gray-500 text-white py-2 px-4 rounded-md"
+        >
+          Next
+        </button>
+      </div>
     </div>
   );
 }
