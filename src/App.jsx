@@ -22,11 +22,7 @@ function App() {
           <label className="radio flex flex-grow items-center justify-center rounded-lg p-1 cursor-pointer">
             <NavLink
               to="/truck1"
-              className={({ isActive }) =>
-                isActive
-                  ? "tracking-widest bg-gradient-to-r from-[blueviolet] to-[violet] text-white p-2 rounded-lg transition duration-150 ease-in-out"
-                  : "tracking-widest text-gray-700 p-2 rounded-lg transition duration-150 ease-in-out"
-              }
+              className="tracking-widest text-gray-700 p-2 rounded-lg transition duration-150 ease-in-out"
             >
               Truck 1
             </NavLink>
@@ -35,11 +31,7 @@ function App() {
           <label className="radio flex flex-grow items-center justify-center rounded-lg p-1 cursor-pointer">
             <NavLink
               to="/truck2"
-              className={({ isActive }) =>
-                isActive
-                  ? "tracking-widest bg-gradient-to-r from-[blueviolet] to-[violet] text-white p-2 rounded-lg transition duration-150 ease-in-out"
-                  : "tracking-widest text-gray-700 p-2 rounded-lg transition duration-150 ease-in-out"
-              }
+              className="tracking-widest text-gray-700 p-2 rounded-lg transition duration-150 ease-in-out"
             >
               Truck 2
             </NavLink>
@@ -48,11 +40,7 @@ function App() {
           <label className="radio flex flex-grow items-center justify-center rounded-lg p-1 cursor-pointer">
             <NavLink
               to="/truck3"
-              className={({ isActive }) =>
-                isActive
-                  ? "tracking-widest bg-gradient-to-r from-[blueviolet] to-[violet] text-white p-2 rounded-lg transition duration-150 ease-in-out"
-                  : "tracking-widest text-gray-700 p-2 rounded-lg transition duration-150 ease-in-out"
-              }
+              className="tracking-widest text-gray-700 p-2 rounded-lg transition duration-150 ease-in-out"
             >
               Truck 3
             </NavLink>
@@ -61,11 +49,7 @@ function App() {
           <label className="radio flex flex-grow items-center justify-center rounded-lg p-1 cursor-pointer">
             <NavLink
               to="/truck4"
-              className={({ isActive }) =>
-                isActive
-                  ? "tracking-widest bg-gradient-to-r from-[blueviolet] to-[violet] text-white p-2 rounded-lg transition duration-150 ease-in-out"
-                  : "tracking-widest text-gray-700 p-2 rounded-lg transition duration-150 ease-in-out"
-              }
+              className="tracking-widest text-gray-700 p-2 rounded-lg transition duration-150 ease-in-out"
             >
               Truck 4
             </NavLink>
@@ -74,11 +58,7 @@ function App() {
           <label className="radio flex flex-grow items-center justify-center rounded-lg p-1 cursor-pointer">
             <NavLink
               to="/truck5"
-              className={({ isActive }) =>
-                isActive
-                  ? "tracking-widest bg-gradient-to-r from-[blueviolet] to-[violet] text-white p-2 rounded-lg transition duration-150 ease-in-out"
-                  : "tracking-widest text-gray-700 p-2 rounded-lg transition duration-150 ease-in-out"
-              }
+              className="tracking-widest text-gray-700 p-2 rounded-lg transition duration-150 ease-in-out"
             >
               Truck 5
             </NavLink>
