@@ -11,7 +11,7 @@ import {
 import { jsPDF } from "jspdf";
 import "jspdf-autotable";
 
-function Truck2() {
+function Truck2({ headerTitle }) {
   const currentDate = new Date().toISOString().split("T")[0];
   const [formData, setFormData] = useState({
     date: currentDate,
@@ -30,6 +30,11 @@ function Truck2() {
   const [year, setYear] = useState(new Date().getFullYear()); // Current year
   const rowsPerPage = 10;
 
+  // Modal State
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [filterType, setFilterType] = useState("");
+  const [filterValue, setFilterValue] = useState("");
+
   // Fetch data from Firestore (using 'Truck2' collection) and sort most recent first
   const fetchData = async () => {
     setLoading(true);
@@ -43,18 +48,14 @@ function Truck2() {
         } else {
           date = new Date(docData.date); // If it's already a string, parse as Date
         }
-
         return {
           id: doc.id,
           ...docData,
           date: date.toISOString(), // Ensure it's stored as ISO string for sorting
         };
       });
-
       // Sort the data in descending order (newest first)
-      data.sort((a, b) => new Date(b.date) - new Date(a.date)); // Correct sorting order
-
-      // Update rows with sorted data
+      data.sort((a, b) => new Date(b.date) - new Date(a.date));
       setRows(data);
     } catch (error) {
       console.error("Error fetching data: ", error);
@@ -77,22 +78,19 @@ function Truck2() {
           fuel: formData.fuel,
           services: formData.services,
           extraCharges: formData.extraCharges,
-          total: formData.total, // Save total to Firestore
+          total: formData.total,
         });
       } else {
-        // Ensure date is stored in a consistent format
         await addDoc(collection(db, "Truck2"), {
-          date: new Date(), // Store the current date/time when saved
+          date: new Date(),
           driverName: formData.driverName,
           jobs: formData.jobs,
           fuel: formData.fuel,
           services: formData.services,
           extraCharges: formData.extraCharges,
-          total: formData.total, // Save total to Firestore
+          total: formData.total,
         });
       }
-
-      // Reset the form after saving
       setFormData({
         date: currentDate,
         driverName: "",
@@ -103,9 +101,7 @@ function Truck2() {
         total: 0,
         id: null,
       });
-
-      // Re-fetch and sort data after saving
-      fetchData(); // Call fetchData to ensure the table is updated immediately
+      fetchData();
     } catch (error) {
       console.error("Error saving document: ", error);
     } finally {
@@ -122,7 +118,7 @@ function Truck2() {
       setLoading(true);
       try {
         await deleteDoc(doc(db, "Truck2", id));
-        fetchData(); // Re-fetch data after deleting
+        fetchData();
       } catch (error) {
         console.error("Error deleting document: ", error);
       } finally {
@@ -140,15 +136,13 @@ function Truck2() {
       fuel: row.fuel,
       services: row.services,
       extraCharges: row.extraCharges,
-      total: row.total, // Set total from Firestore
+      total: row.total,
       id: row.id,
     });
   };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-
-    // For fields fuel, services, and extraCharges, handle both numbers and strings
     if (
       name === "fuel" ||
       name === "services" ||
@@ -173,8 +167,8 @@ function Truck2() {
 
   // Extract number from a string (e.g., "300 (given by Yaseen)" -> 300)
   const extractNumber = (input) => {
-    const match = input.match(/[\d\.]+/); // Regular expression to match numbers
-    return match ? parseFloat(match[0]) : 0; // Return the first matched number or 0 if no match
+    const match = input.match(/[\d\.]+/);
+    return match ? parseFloat(match[0]) : 0;
   };
 
   // Calculate total based on Jobs, Fuel, Services, and Extra Charges
@@ -183,12 +177,32 @@ function Truck2() {
     const fuel = extractNumber(updatedFormData.fuel);
     const services = extractNumber(updatedFormData.services);
     const extraCharges = extractNumber(updatedFormData.extraCharges);
-    const total = jobs + fuel + services + extraCharges; // Sum jobs, fuel, services, and extra charges
-
+    const total = jobs + fuel + services + extraCharges;
     setFormData((prev) => ({
       ...prev,
-      total, // Set the total value
+      total,
     }));
+  };
+
+  // Calculate total sums for jobs, fuel, services, and extra charges
+  const calculateColumnTotals = () => {
+    const totalJobs = rows.reduce(
+      (acc, row) => acc + extractNumber(row.jobs),
+      0
+    );
+    const totalFuel = rows.reduce(
+      (acc, row) => acc + extractNumber(row.fuel),
+      0
+    );
+    const totalServices = rows.reduce(
+      (acc, row) => acc + extractNumber(row.services),
+      0
+    );
+    const totalExtraCharges = rows.reduce(
+      (acc, row) => acc + extractNumber(row.extraCharges),
+      0
+    );
+    return { totalJobs, totalFuel, totalServices, totalExtraCharges };
   };
 
   // Calculate overall total of the total column
@@ -234,7 +248,7 @@ function Truck2() {
     setCurrentPage(1);
   };
 
-  // Export data to PDF, including overall total, in the same format as displayed
+  // Export to PDF with modal-based filtering
   const exportToPDF = () => {
     const doc = new jsPDF();
     doc.setFontSize(18);
@@ -262,7 +276,6 @@ function Truck2() {
       row.total,
     ]);
 
-    // First, create the main table without totals
     doc.autoTable({
       head: [headers],
       body: tableData,
@@ -273,6 +286,7 @@ function Truck2() {
         fontSize: 10,
       },
       columnStyles: {
+        3: { halign: "right" }, // Jobs column
         4: { halign: "right" }, // Fuel column
         5: { halign: "right" }, // Services column
         6: { halign: "right" }, // Extra Charges column
@@ -280,54 +294,147 @@ function Truck2() {
       },
     });
 
-    // Calculate totals
-    const totalFuel = rows.reduce(
-      (acc, row) => acc + (parseFloat(row.fuel) || 0),
-      0
-    );
-    const totalServices = rows.reduce(
-      (acc, row) => acc + (parseFloat(row.services) || 0),
-      0
-    );
-    const totalExtraCharges = rows.reduce(
-      (acc, row) => acc + (parseFloat(row.extraCharges) || 0),
-      0
-    );
-    const overallTotal = calculateOverallTotal();
+    doc.save("truck_data_report.pdf");
+  };
 
-    // Create totals row in a separate table
-    const totalsData = [
-      [
-        "FUEL ", // S No
-        totalFuel.toFixed(2), // Fuel total
-        "SERVICE ", // Date
-        totalServices.toFixed(2), // Services total
-        "EXTRA ", // Driver Name
-        totalExtraCharges.toFixed(2), // Extra Charges total
-        "OVERALL :", // Jobs
-        overallTotal.toFixed(2), // Overall total
-      ],
+  // Modal Handlers
+  const openModal = () => {
+    setIsModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setFilterType("");
+    setFilterValue("");
+  };
+
+  const handleExport = () => {
+    let filteredData = [];
+
+    if (filterType === "1") {
+      // Filter by S No
+      const sNo = parseInt(filterValue, 10);
+      if (!isNaN(sNo)) {
+        filteredData = rows.filter((_, index) => index + 1 === sNo);
+      }
+    } else if (filterType === "2") {
+      // Filter by Days
+      const days = parseInt(filterValue, 10);
+      if (!isNaN(days)) {
+        const cutoffDate = new Date();
+        cutoffDate.setDate(cutoffDate.getDate() - days);
+        filteredData = rows.filter((row) => new Date(row.date) >= cutoffDate);
+      }
+    } else if (filterType === "3") {
+      // Filter by Weeks
+      const weeks = parseInt(filterValue, 10);
+      if (!isNaN(weeks)) {
+        const cutoffDate = new Date();
+        cutoffDate.setDate(cutoffDate.getDate() - weeks * 7);
+        filteredData = rows.filter((row) => new Date(row.date) >= cutoffDate);
+      }
+    } else if (filterType === "4") {
+      // Filter by Months
+      const months = parseInt(filterValue, 10);
+      if (!isNaN(months)) {
+        const cutoffDate = new Date();
+        cutoffDate.setMonth(cutoffDate.getMonth() - months);
+        filteredData = rows.filter((row) => new Date(row.date) >= cutoffDate);
+      }
+    } else if (filterType === "5") {
+      // Filter by Years
+      const years = parseInt(filterValue, 10);
+      if (!isNaN(years)) {
+        const cutoffDate = new Date();
+        cutoffDate.setFullYear(cutoffDate.getFullYear() - years);
+        filteredData = rows.filter((row) => new Date(row.date) >= cutoffDate);
+      }
+    }
+
+    if (filteredData.length === 0) {
+      alert("No data found for the selected filter.");
+      closeModal();
+      return;
+    }
+
+    const doc = new jsPDF();
+    doc.setFontSize(18);
+    doc.text("Truck2 Data Report", 14, 20);
+
+    const headers = [
+      "S No",
+      "Date",
+      "Driver Name",
+      "Jobs",
+      "Fuel",
+      "Services",
+      "Extra Charges",
+      "Total",
     ];
 
-    // Add the totals table with some spacing
+    const tableData = filteredData.map((row, index) => [
+      index + 1,
+      row.date,
+      row.driverName,
+      row.jobs,
+      row.fuel,
+      row.services,
+      row.extraCharges,
+      row.total,
+    ]);
+
+    const totalJobs = filteredData.reduce(
+      (acc, row) => acc + extractNumber(row.jobs),
+      0
+    );
+    const totalFuel = filteredData.reduce(
+      (acc, row) => acc + extractNumber(row.fuel),
+      0
+    );
+    const totalServices = filteredData.reduce(
+      (acc, row) => acc + extractNumber(row.services),
+      0
+    );
+    const totalExtraCharges = filteredData.reduce(
+      (acc, row) => acc + extractNumber(row.extraCharges),
+      0
+    );
+    const overallTotal = filteredData.reduce(
+      (acc, row) => acc + (row.total || 0),
+      0
+    );
+
+    const totalsRow = [
+      "Totals:",
+      "",
+      "",
+      totalJobs.toFixed(2),
+      totalFuel.toFixed(2),
+      totalServices.toFixed(2),
+      totalExtraCharges.toFixed(2),
+      overallTotal.toFixed(2),
+    ];
+
     doc.autoTable({
-      body: totalsData,
-      startY: doc.lastAutoTable.finalY + 5, // Add 5 units of space
+      head: [headers],
+      body: [...tableData, totalsRow],
+      startY: 30,
       theme: "grid",
       styles: {
         cellPadding: 2,
         fontSize: 10,
       },
       columnStyles: {
-        4: { halign: "right" }, // Fuel column
-        5: { halign: "right" }, // Services column
-        6: { halign: "right" }, // Extra Charges column
-        7: { halign: "right" }, // Total column
+        3: { halign: "right" },
+        4: { halign: "right" },
+        5: { halign: "right" },
+        6: { halign: "right" },
+        7: { halign: "right" },
       },
     });
 
-    // Save the generated PDF
     doc.save("truck_data_report.pdf");
+    closeModal();
   };
 
   useEffect(() => {
@@ -335,50 +442,20 @@ function Truck2() {
   }, []);
 
   const filteredRows = filterByDate(rows);
+  const columnTotals = calculateColumnTotals();
 
   return (
-    <div className="p-4 md:p-6 max-w-full overflow-hidden">
+    <div className="container">
       {/* Filter by Month and Year */}
-      <div className="flex justify-between mb-6">
-        <div>
-          <label className="mr-4">Month:</label>
-          <select
-            value={month}
-            onChange={handleMonthChange}
-            className="border p-2 rounded-md"
-          >
-            {Array.from({ length: 12 }, (_, i) => (
-              <option key={i} value={i + 1}>
-                {new Date(0, i).toLocaleString("default", { month: "long" })}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="mr-4">Year:</label>
-          <select
-            value={year}
-            onChange={handleYearChange}
-            className="border p-2 rounded-md"
-          >
-            {Array.from({ length: 10 }, (_, i) => (
-              <option key={i} value={new Date().getFullYear() - i}>
-                {new Date().getFullYear() - i}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      {/* Responsive Form */}
-      <form onSubmit={saveData} className="mb-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      <form onSubmit={saveData} className="mb-4">
+        {/* First Row: Form Fields */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-4">
           <input
             type="date"
             name="date"
             value={formData.date}
             onChange={handleInputChange}
-            className="w-full border p-2 rounded-md"
+            className="p-2 border border-gray-300 rounded-md"
           />
           <input
             type="text"
@@ -386,7 +463,7 @@ function Truck2() {
             placeholder="Driver Name"
             value={formData.driverName}
             onChange={handleInputChange}
-            className="w-full border p-2 rounded-md"
+            className="p-2 border border-gray-300 rounded-md"
           />
           <input
             type="text"
@@ -394,7 +471,7 @@ function Truck2() {
             placeholder="Jobs"
             value={formData.jobs}
             onChange={handleInputChange}
-            className="w-full border p-2 rounded-md"
+            className="p-2 border border-gray-300 rounded-md"
           />
           <input
             type="text"
@@ -402,7 +479,7 @@ function Truck2() {
             placeholder="Fuel"
             value={formData.fuel}
             onChange={handleInputChange}
-            className="w-full border p-2 rounded-md"
+            className="p-2 border border-gray-300 rounded-md"
           />
           <input
             type="text"
@@ -410,7 +487,7 @@ function Truck2() {
             placeholder="Services"
             value={formData.services}
             onChange={handleInputChange}
-            className="w-full border p-2 rounded-md"
+            className="p-2 border border-gray-300 rounded-md"
           />
           <input
             type="text"
@@ -418,164 +495,193 @@ function Truck2() {
             placeholder="Extra Charges"
             value={formData.extraCharges}
             onChange={handleInputChange}
-            className="w-full border p-2 rounded-md"
+            className="p-2 border border-gray-300 rounded-md"
           />
         </div>
 
-        {/* Total Input Field */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mt-4">
+        {/* Second Row: Total Field */}
+        <div className="flex justify-center items-center mb-4">
+          <label className="mr-2 font-medium">Total:</label>
           <input
             type="text"
             name="total"
             value={formData.total.toFixed(2)}
             readOnly
-            className="w-full border p-2 rounded-md bg-gray-100 text-center"
+            className="w-32 border p-2 rounded-md bg-gray-100 text-center"
           />
         </div>
 
-        <div className="mt-4">
-          <button
-            type="submit"
-            className="w-full sm:w-auto bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors"
-          >
-            {formData.id ? "Update" : "Save"}
-          </button>
-        </div>
-      </form>
-
-      {/* Export Button */}
-      <div className="mb-4">
+        {/* Save/Update Button */}
         <button
-          onClick={exportToPDF}
-          className="w-full sm:w-auto bg-green-500 text-white py-2 px-4 rounded-md hover:bg-green-700 transition-colors"
+          type="submit"
+          className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-700 transition-colors"
         >
-          Export to PDF
+          {formData.id ? "Update" : "Save"}
         </button>
-      </div>
+      </form>
+      {/* Export Button */}
+      <button
+        onClick={openModal}
+        className="w-full sm:w-auto bg-green-500 text-white py-2 px-4 rounded-md hover:bg-green-700 transition-colors mb-1"
+      >
+        Export to PDF
+      </button>
 
       {/* Loading State */}
       {loading ? (
-        <div className="flex justify-center items-center py-8">
-          <p>Loading...</p>
-        </div>
+        <p className="text-center text-lg">Loading...</p>
       ) : (
-        /* Responsive Table */
-        <div className="overflow-x-auto -mx-4 md:mx-0">
-          <div className="inline-block min-w-full align-middle">
-            <div className="overflow-hidden border border-gray-200 rounded-lg">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      S No
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Date
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Driver Name
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Jobs
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Fuel
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Services
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Extra Charges
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Total
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {paginatedRows.map((row, index) => (
-                    <tr key={row.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-2 whitespace-nowrap text-sm">
-                        {index + 1}
-                      </td>
-                      <td className="px-4 py-2 whitespace-nowrap text-sm">
-                        {row.date}
-                      </td>
-                      <td className="px-4 py-2 whitespace-nowrap text-sm">
-                        {row.driverName}
-                      </td>
-                      <td className="px-4 py-2 whitespace-nowrap text-sm">
-                        {row.jobs}
-                      </td>
-                      <td className="px-4 py-2 whitespace-nowrap text-sm">
-                        {row.fuel}
-                      </td>
-                      <td className="px-4 py-2 whitespace-nowrap text-sm">
-                        {row.services}
-                      </td>
-                      <td className="px-4 py-2 whitespace-nowrap text-sm">
-                        {row.extraCharges}
-                      </td>
-                      <td className="px-4 py-2 whitespace-nowrap text-sm">
-                        {row.total}
-                      </td>
-                      <td className="px-4 py-2 whitespace-nowrap text-sm">
-                        <div className="flex space-x-2">
-                          <button
-                            onClick={() => editData(row)}
-                            className="bg-yellow-500 text-white py-1 px-3 rounded-md hover:bg-yellow-700 transition-colors"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => deleteData(row.id)}
-                            className="bg-red-500 text-white py-1 px-3 rounded-md hover:bg-red-700 transition-colors"
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                  {/* Overall Total Row */}
-                  <tr>
-                    <td
-                      colSpan="7"
-                      className="text-right px-4 py-2 text-sm font-medium text-gray-500"
-                    >
-                      Overall Total
-                    </td>
-                    <td className="px-4 py-2 text-sm font-medium text-gray-500">
-                      {calculateOverallTotal().toFixed(2)}
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
+        <table className="min-w-full border-collapse bg-white shadow-md rounded-md overflow-hidden">
+          <thead className="bg-gray-200">
+            <tr>
+              <th className="border p-2">S No</th>
+              <th className="border p-2">Date</th>
+              <th className="border p-2">Driver Name</th>
+              <th className="border p-2">Jobs</th>
+              <th className="border p-2">Fuel</th>
+              <th className="border p-2">Services</th>
+              <th className="border p-2">Extra Charges</th>
+              <th className="border p-2">Total</th>
+              <th className="border p-2">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {paginatedRows.map((row, index) => (
+              <tr key={row.id}>
+                <td className="border p-2">{index + 1}</td>
+                <td className="border p-2">{row.date}</td>
+                <td className="border p-2">{row.driverName}</td>
+                <td className="border p-2">{row.jobs}</td>
+                <td className="border p-2">{row.fuel}</td>
+                <td className="border p-2">{row.services}</td>
+                <td className="border p-2">{row.extraCharges}</td>
+                <td className="border p-2">{row.total}</td>
+                <td className="border p-2">
+                  <button
+                    onClick={() => editData(row)}
+                    className="bg-yellow-500 text-white py-1 px-3 rounded-md hover:bg-yellow-700 transition-colors mr-2"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => deleteData(row.id)}
+                    className="bg-red-500 text-white py-1 px-3 rounded-md hover:bg-red-700 transition-colors"
+                  >
+                    Delete
+                  </button>
+                </td>
+              </tr>
+            ))}
+            {/* Totals Row */}
+            <tr className="font-bold">
+              <td colSpan="3" className="border p-2 text-right">
+                Totals:
+              </td>
+              <td className="border p-2">
+                {columnTotals.totalJobs.toFixed(2)}
+              </td>
+              <td className="border p-2">
+                {columnTotals.totalFuel.toFixed(2)}
+              </td>
+              <td className="border p-2">
+                {columnTotals.totalServices.toFixed(2)}
+              </td>
+              <td className="border p-2">
+                {columnTotals.totalExtraCharges.toFixed(2)}
+              </td>
+              <td className="border p-2">
+                {calculateOverallTotal().toFixed(2)}
+              </td>
+              <td className="border p-2"></td>{" "}
+              {/* Empty cell for Actions column */}
+            </tr>
+          </tbody>
+        </table>
       )}
 
       {/* Pagination Controls */}
-      <div className="mb-4 flex justify-between mt-4">
+      {/* Pagination Controls */}
+      <div className="flex justify-between mt-4">
+        {/* Previous Button */}
         <button
           onClick={handlePreviousPage}
           disabled={currentPage === 1}
-          className="bg-gray-500 text-white py-2 px-4 rounded-md"
+          className={`px-4 py-2 rounded-md transition-colors ${
+            currentPage === 1
+              ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+              : "bg-blue-500 text-white hover:bg-blue-700"
+          }`}
         >
           Previous
         </button>
+
+        {/* Next Button */}
         <button
           onClick={handleNextPage}
-          disabled={currentPage * rowsPerPage >= filteredRows.length}
-          className="bg-gray-500 text-white py-2 px-4 rounded-md"
+          disabled={currentPage * rowsPerPage >= rows.length}
+          className={`px-4 py-2 rounded-md transition-colors ${
+            currentPage * rowsPerPage >= rows.length
+              ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+              : "bg-blue-500 text-white hover:bg-blue-700"
+          }`}
         >
           Next
         </button>
       </div>
+
+      {/* Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-gray-800 bg-opacity-50 flex justify-center items-center">
+          <div className="bg-white p-6 rounded-lg shadow-lg w-96">
+            <h2 className="text-xl font-bold mb-4">Export Options</h2>
+            <div className="mb-4">
+              <label className="block text-sm font-medium mb-2">
+                Filter By:
+              </label>
+              <select
+                value={filterType}
+                onChange={(e) => setFilterType(e.target.value)}
+                className="w-full p-2 border border-gray-300 rounded-md"
+              >
+                <option value="">Select Filter Type</option>
+                <option value="1">By S No</option>
+                <option value="2">By Days</option>
+                <option value="3">By Weeks</option>
+                <option value="4">By Months</option>
+                <option value="5">By Years</option>
+              </select>
+            </div>
+            {filterType && (
+              <div className="mb-4">
+                <label className="block text-sm font-medium mb-2">
+                  Enter Value:
+                </label>
+                <input
+                  type="text"
+                  value={filterValue}
+                  onChange={(e) => setFilterValue(e.target.value)}
+                  placeholder="Enter value"
+                  className="w-full p-2 border border-gray-300 rounded-md"
+                />
+              </div>
+            )}
+            <div className="flex justify-end space-x-4">
+              <button
+                onClick={closeModal}
+                className="px-4 py-2 bg-gray-300 rounded-md hover:bg-gray-400 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleExport}
+                className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-700 transition-colors"
+              >
+                Export
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
