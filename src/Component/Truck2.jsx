@@ -11,7 +11,7 @@ import {
 import { jsPDF } from "jspdf";
 import "jspdf-autotable";
 
-function Truck2({ headerTitle }) {
+function Truck2() {
   const currentDate = new Date().toISOString().split("T")[0];
   const [formData, setFormData] = useState({
     date: currentDate,
@@ -28,6 +28,10 @@ function Truck2({ headerTitle }) {
   const [currentPage, setCurrentPage] = useState(1);
   const [month, setMonth] = useState(new Date().getMonth() + 1); // Current month
   const [year, setYear] = useState(new Date().getFullYear()); // Current year
+  const [startValue, setStartValue] = useState("");
+  const [endValue, setEndValue] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const rowsPerPage = 10;
 
   // Modal State
@@ -312,42 +316,57 @@ function Truck2({ headerTitle }) {
     let filteredData = [];
 
     if (filterType === "1") {
-      // Filter by S No
-      const sNo = parseInt(filterValue, 10);
-      if (!isNaN(sNo)) {
-        filteredData = rows.filter((_, index) => index + 1 === sNo);
+      // Filter by S No Range
+      const start = parseInt(startValue, 10);
+      const end = parseInt(endValue, 10);
+
+      if (!isNaN(start) && !isNaN(end)) {
+        filteredData = rows.filter(
+          (_, index) => index + 1 >= start && index + 1 <= end
+        );
+      } else {
+        alert("Please enter valid starting and ending S No values.");
+        return;
       }
     } else if (filterType === "2") {
-      // Filter by Days
-      const days = parseInt(filterValue, 10);
-      if (!isNaN(days)) {
-        const cutoffDate = new Date();
-        cutoffDate.setDate(cutoffDate.getDate() - days);
-        filteredData = rows.filter((row) => new Date(row.date) >= cutoffDate);
+      // Filter by Date Range
+      if (!startDate || !endDate) {
+        alert("Please select both a start date and an end date.");
+        return;
       }
+
+      const startRange = new Date(startDate);
+      const endRange = new Date(endDate);
+
+      if (startRange > endRange) {
+        alert("Start date cannot be later than end date.");
+        return;
+      }
+
+      filteredData = rows.filter((row) => {
+        const rowDate = new Date(row.date);
+        return rowDate >= startRange && rowDate <= endRange;
+      });
     } else if (filterType === "3") {
-      // Filter by Weeks
-      const weeks = parseInt(filterValue, 10);
-      if (!isNaN(weeks)) {
-        const cutoffDate = new Date();
-        cutoffDate.setDate(cutoffDate.getDate() - weeks * 7);
-        filteredData = rows.filter((row) => new Date(row.date) >= cutoffDate);
+      // Filter by Month
+      const selectedMonth = parseInt(filterValue, 10); // Get the selected month (1-12)
+      if (!isNaN(selectedMonth)) {
+        filteredData = rows.filter((row) => {
+          const rowDate = new Date(row.date);
+          return (
+            rowDate.getMonth() + 1 === selectedMonth &&
+            rowDate.getFullYear() === year
+          );
+        });
       }
     } else if (filterType === "4") {
-      // Filter by Months
-      const months = parseInt(filterValue, 10);
-      if (!isNaN(months)) {
-        const cutoffDate = new Date();
-        cutoffDate.setMonth(cutoffDate.getMonth() - months);
-        filteredData = rows.filter((row) => new Date(row.date) >= cutoffDate);
-      }
-    } else if (filterType === "5") {
-      // Filter by Years
-      const years = parseInt(filterValue, 10);
-      if (!isNaN(years)) {
-        const cutoffDate = new Date();
-        cutoffDate.setFullYear(cutoffDate.getFullYear() - years);
-        filteredData = rows.filter((row) => new Date(row.date) >= cutoffDate);
+      // Filter by Year
+      const selectedYear = parseInt(filterValue, 10); // Get the selected year
+      if (!isNaN(selectedYear)) {
+        filteredData = rows.filter((row) => {
+          const rowDate = new Date(row.date);
+          return rowDate.getFullYear() === selectedYear;
+        });
       }
     }
 
@@ -629,52 +648,165 @@ function Truck2({ headerTitle }) {
         </button>
       </div>
 
-      {/* Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-gray-800 bg-opacity-50 flex justify-center items-center">
-          <div className="bg-white p-6 rounded-lg shadow-lg w-96">
-            <h2 className="text-xl font-bold mb-4">Export Options</h2>
-            <div className="mb-4">
-              <label className="block text-sm font-medium mb-2">
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-50">
+          {/* Modal Container */}
+          <div className="bg-white p-6 rounded-lg shadow-lg w-96 max-h-[80vh] overflow-y-auto">
+            {/* Header */}
+            <h2 className="text-xl font-bold mb-4 text-gray-800">
+              Export Options
+            </h2>
+
+            {/* Filter Type Dropdown */}
+            <label className="block mb-4">
+              <span className="block text-sm font-medium text-gray-700 mb-1">
                 Filter By:
-              </label>
+              </span>
               <select
                 value={filterType}
                 onChange={(e) => setFilterType(e.target.value)}
-                className="w-full p-2 border border-gray-300 rounded-md"
+                className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
               >
                 <option value="">Select Filter Type</option>
-                <option value="1">By S No</option>
-                <option value="2">By Days</option>
-                <option value="3">By Weeks</option>
-                <option value="4">By Months</option>
-                <option value="5">By Years</option>
+                <option value="1">By S No Range</option>
+                <option value="2">By Date Range</option>
+                <option value="3">By Months</option>
+                <option value="4">By Years</option>
               </select>
-            </div>
-            {filterType && (
-              <div className="mb-4">
-                <label className="block text-sm font-medium mb-2">
-                  Enter Value:
+            </label>
+
+            {/* S No Range Input */}
+            {filterType === "1" && (
+              <div className="space-y-4">
+                <label className="block">
+                  <span className="block text-sm font-medium text-gray-700 mb-1">
+                    Starting S No:
+                  </span>
+                  <input
+                    type="number"
+                    value={startValue}
+                    onChange={(e) => setStartValue(e.target.value)}
+                    placeholder="Enter starting S No"
+                    className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  />
                 </label>
-                <input
-                  type="text"
-                  value={filterValue}
-                  onChange={(e) => setFilterValue(e.target.value)}
-                  placeholder="Enter value"
-                  className="w-full p-2 border border-gray-300 rounded-md"
-                />
+                <label className="block">
+                  <span className="block text-sm font-medium text-gray-700 mb-1">
+                    Ending S No:
+                  </span>
+                  <input
+                    type="number"
+                    value={endValue}
+                    onChange={(e) => setEndValue(e.target.value)}
+                    placeholder="Enter ending S No"
+                    className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  />
+                </label>
               </div>
             )}
-            <div className="flex justify-end space-x-4">
+
+            {/* Date Range Input */}
+            {filterType === "2" && (
+              <div className="space-y-4">
+                <label className="block">
+                  <span className="block text-sm font-medium text-gray-700 mb-1">
+                    Start Date:
+                  </span>
+                  <input
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  />
+                </label>
+                <label className="block">
+                  <span className="block text-sm font-medium text-gray-700 mb-1">
+                    End Date:
+                  </span>
+                  <input
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  />
+                </label>
+              </div>
+            )}
+
+            {/* Month Dropdown */}
+            {filterType === "3" && (
+              <div className="block mb-4">
+                <label className="block">
+                  <span className="block text-sm font-medium text-gray-700 mb-1">
+                    Select Month:
+                  </span>
+                  <select
+                    value={filterValue}
+                    onChange={(e) => setFilterValue(e.target.value)}
+                    className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  >
+                    <option value="">Select Month</option>
+                    {[
+                      "January",
+                      "February",
+                      "March",
+                      "April",
+                      "May",
+                      "June",
+                      "July",
+                      "August",
+                      "September",
+                      "October",
+                      "November",
+                      "December",
+                    ].map((month, index) => (
+                      <option key={index + 1} value={index + 1}>
+                        {month}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+            )}
+
+            {/* Year Dropdown */}
+            {filterType === "4" && (
+              <div className="block mb-4">
+                <label className="block">
+                  <span className="block text-sm font-medium text-gray-700 mb-1">
+                    Select Year:
+                  </span>
+                  <select
+                    value={filterValue}
+                    onChange={(e) => setFilterValue(e.target.value)}
+                    className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  >
+                    <option value="">Select Year</option>
+                    {[
+                      ...new Set(
+                        rows.map((row) => new Date(row.date).getFullYear())
+                      ),
+                    ].map((year) => (
+                      <option key={year} value={year}>
+                        {year}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className="flex justify-end mt-6">
               <button
                 onClick={closeModal}
-                className="px-4 py-2 bg-gray-300 rounded-md hover:bg-gray-400 transition-colors"
+                className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 transition-colors mr-2"
               >
                 Cancel
               </button>
               <button
                 onClick={handleExport}
-                className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-700 transition-colors"
+                className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors"
               >
                 Export
               </button>
