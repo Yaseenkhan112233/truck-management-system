@@ -10,6 +10,27 @@ import {
 } from "firebase/firestore";
 import { jsPDF } from "jspdf";
 import "jspdf-autotable";
+import { Line } from "react-chartjs-2";
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+} from "chart.js";
+
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend
+);
 
 function Truck4() {
   const currentDate = new Date().toISOString().split("T")[0];
@@ -32,6 +53,8 @@ function Truck4() {
   const [endValue, setEndValue] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  // const [filterType, setFilterType] = useState("recent");
+  // const [rows, setRows] = useState([]);
   const rowsPerPage = 10;
 
   // Modal State
@@ -39,7 +62,7 @@ function Truck4() {
   const [filterType, setFilterType] = useState("");
   const [filterValue, setFilterValue] = useState("");
 
-  // Fetch data from Firestore (using 'Truc41' collection) and sort most recent first
+  // Fetch data from Firestore (using 'Truck4' collection) and sort most recent first
   const fetchData = async () => {
     setLoading(true);
     try {
@@ -67,7 +90,127 @@ function Truck4() {
       setLoading(false);
     }
   };
+  const getFilteredRows = () => {
+    if (filterType === "recent") {
+      // Show data for the most recent month
+      const currentMonth = new Date().getMonth() + 1;
+      const currentYear = new Date().getFullYear();
+      return rows.filter((row) => {
+        const rowDate = new Date(row.date);
+        return (
+          rowDate.getMonth() + 1 === currentMonth &&
+          rowDate.getFullYear() === currentYear
+        );
+      });
+    } else if (filterType === "month") {
+      // Show data for the selected month and year
+      return rows.filter((row) => {
+        const rowDate = new Date(row.date);
+        return (
+          rowDate.getMonth() + 1 === selectedMonth &&
+          rowDate.getFullYear() === selectedYear
+        );
+      });
+    } else if (filterType === "year") {
+      // Show data for the selected year
+      return rows.filter((row) => {
+        const rowDate = new Date(row.date);
+        return rowDate.getFullYear() === selectedYear;
+      });
+    } else if (filterType === "all") {
+      // Show all-time data
+      return rows;
+    }
+    return [];
+  };
+  const filterByMonth = (data) => {
+    if (!filterValue) return data; // Return all data if no month is selected
+    const selectedMonth = parseInt(filterValue, 10);
+    return data.filter((row) => {
+      const rowDate = new Date(row.date);
+      return (
+        rowDate.getMonth() + 1 === selectedMonth &&
+        rowDate.getFullYear() === year
+      );
+    });
+  };
+  const filterByYear = (data) => {
+    if (!filterValue) return data; // Return all data if no year is selected
+    const selectedYear = parseInt(filterValue, 10);
+    return data.filter((row) => {
+      const rowDate = new Date(row.date);
+      return rowDate.getFullYear() === selectedYear;
+    });
+  };
+  const filterAllTime = (data) => {
+    return data; // Return all data without filtering
+  };
+  const getFilteredData = () => {
+    let filteredData = rows;
+    if (filterType === "month") {
+      filteredData = filterByMonth(filteredData);
+    } else if (filterType === "year") {
+      filteredData = filterByYear(filteredData);
+    } else if (filterType === "all") {
+      filteredData = filterAllTime(filteredData);
+    }
+    return filteredData;
+  };
+  // Prepare chart data based on filtered rows
+  const prepareChartData = () => {
+    const filteredData = getFilteredData();
+    const fuelData = filteredData.map((row) => extractNumber(row.fuel));
+    const jobsData = filteredData.map((row) => extractNumber(row.jobs));
+    const servicesData = filteredData.map((row) => extractNumber(row.services));
+    const extraChargesData = filteredData.map((row) =>
+      extractNumber(row.extraCharges)
+    );
+    const totalData = filteredData.map((row) => row.total || 0);
 
+    return {
+      labels: filteredData.map((row) => row.date.split("T")[0]), // X-axis labels are dates
+      datasets: [
+        {
+          label: "Fuel",
+          data: fuelData,
+          borderColor: "rgba(75, 192, 192, 1)",
+          fill: false,
+          tension: 0.1,
+        },
+        {
+          label: "Jobs",
+          data: jobsData,
+          borderColor: "rgba(153, 102, 255, 1)",
+          fill: false,
+          tension: 0.1,
+        },
+        {
+          label: "Services",
+          data: servicesData,
+          borderColor: "rgba(255, 159, 64, 1)",
+          fill: false,
+          tension: 0.1,
+        },
+        {
+          label: "Extra Charges",
+          data: extraChargesData,
+          borderColor: "rgba(255, 99, 132, 1)",
+          fill: false,
+          tension: 0.1,
+        },
+        {
+          label: "Total",
+          data: totalData,
+          borderColor: "rgba(255, 205, 86, 1)",
+          fill: false,
+          tension: 0.1,
+        },
+      ],
+    };
+  };
+  const handleFilterChange = (e) => {
+    setFilterType(e.target.value);
+  };
   // Save data to Firestore, including total
   const saveData = async (e) => {
     e.preventDefault();
@@ -465,7 +608,6 @@ function Truck4() {
 
   return (
     <div className="container">
-      {/* Filter by Month and Year */}
       <form onSubmit={saveData} className="mb-4">
         {/* First Row: Form Fields */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-4">
@@ -814,6 +956,71 @@ function Truck4() {
           </div>
         </div>
       )}
+      {/* Chart Section */}
+      <div className="mt-8">
+        {/* Filter Controls */}
+        <div className="flex space-x-4 mb-4">
+          <select
+            value={filterValue}
+            onChange={(e) => {
+              setFilterType("month");
+              setFilterValue(e.target.value);
+            }}
+            className="p-2 border border-gray-300 rounded-md"
+          >
+            <option value="">Select Month</option>
+            {[
+              "January",
+              "February",
+              "March",
+              "April",
+              "May",
+              "June",
+              "July",
+              "August",
+              "September",
+              "October",
+              "November",
+              "December",
+            ].map((monthName, index) => (
+              <option key={index} value={index + 1}>
+                {monthName}
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={filterValue}
+            onChange={(e) => {
+              setFilterType("year");
+              setFilterValue(e.target.value);
+            }}
+            className="p-2 border border-gray-300 rounded-md"
+          >
+            <option value="">Select Year</option>
+            {[
+              ...new Set(rows.map((row) => new Date(row.date).getFullYear())),
+            ].map((year) => (
+              <option key={year} value={year}>
+                {year}
+              </option>
+            ))}
+          </select>
+
+          <button
+            onClick={() => {
+              setFilterType("all");
+              setFilterValue("");
+            }}
+            className="px-4 py-2 bg-blue-500 text-white rounded-md"
+          >
+            Show All-Time Data
+          </button>
+        </div>
+
+        {/* Chart */}
+        <Line data={prepareChartData()} />
+      </div>
     </div>
   );
 }
