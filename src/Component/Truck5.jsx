@@ -313,15 +313,19 @@ function Truck5() {
   };
 
   // Extract number from a string (e.g., "300 (given by Yaseen)" -> 300)
-  const extractNumber = (input) => {
-    const match = input.match(/[\d\.]+/);
-    return match ? parseFloat(match[0]) : 0;
+  // Extract all numbers from a string and sum them
+  const extractNumbersAndSum = (input) => {
+    const numbers = input.match(/\d+/g); // Match all sequences of digits
+    if (numbers) {
+      return numbers.reduce((sum, num) => sum + parseFloat(num), 0); // Sum the numbers
+    }
+    return 0;
   };
 
   // Calculate total based on Jobs, Fuel, Services, and Extra Charges
   const calculateTotal = (updatedFormData) => {
-    const jobs = extractNumber(updatedFormData.jobs);
-    const fuel = extractNumber(updatedFormData.fuel);
+    const jobs = extractNumbersAndSum(updatedFormData.jobs);
+    const fuel = extractNumber(updatedFormData.fuel); // assuming extractNumber handles the fuel input properly
     const services = extractNumber(updatedFormData.services);
     const extraCharges = extractNumber(updatedFormData.extraCharges);
     const total = jobs + fuel + services + extraCharges;
@@ -329,6 +333,12 @@ function Truck5() {
       ...prev,
       total,
     }));
+  };
+
+  // Extract number from a string (e.g., "300 (given by Yaseen)" -> 300)
+  const extractNumber = (input) => {
+    const match = input.match(/[\d\.]+/);
+    return match ? parseFloat(match[0]) : 0;
   };
 
   // Calculate total sums for jobs, fuel, services, and extra charges
