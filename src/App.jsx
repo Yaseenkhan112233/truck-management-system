@@ -234,7 +234,7 @@ function App() {
                 {/* Header with Logo and Navigation */}
                 <div className="w-full max-w-4xl bg-gray-300 p-4 rounded-lg mb-8 flex items-center justify-between">
                   <img
-                    src="./src/assets/jls.svg"
+                    src="/src/Images/jls.svg"
                     alt="Logo"
                     className="w-45 h-16"
                   />
