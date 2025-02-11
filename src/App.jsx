@@ -233,11 +233,7 @@ function App() {
               <div className="min-h-screen bg-gradient-to-br from-gray-100 via-gray-200 to-gray-300 flex flex-col items-center p-4">
                 {/* Header with Logo and Navigation */}
                 <div className="w-full max-w-4xl bg-gray-300 p-4 rounded-lg mb-8 flex items-center justify-between">
-                  <img
-                    src="/src/Images/jls.svg"
-                    alt="Logo"
-                    className="w-45 h-16"
-                  />
+                  <img src="/Images/jls.svg" alt="Logo" className="w-45 h-16" />
                   <div className="flex space-x-2 border-[3px] border-purple-400 rounded-xl select-none">
                     {[1, 2, 3, 4, 5].map((truck) => (
                       <label

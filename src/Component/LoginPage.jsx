@@ -134,7 +134,7 @@ const Login = ({ onLogin }) => {
         <div className="space-y-6">
           {/* Logo */}
           <div className="flex justify-center mb-4">
-            <img src="./src/Images/jls.svg" alt="Logo" className="w-32 h-12" />
+            <img src="/Images/jls.svg" alt="Logo" className="w-32 h-12" />
           </div>
           {/* Title */}
           <h2 className="text-2xl font-bold text-center text-gray-900">
