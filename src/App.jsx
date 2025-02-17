@@ -218,7 +218,7 @@ function App() {
           path="/login"
           element={
             isAuthenticated ? (
-              <Navigate to="/" />
+              <Navigate to="/truck1" />
             ) : (
               <Login onLogin={handleLogin} />
             )
@@ -264,7 +264,7 @@ function App() {
 
                 {/* Nested Routes for Trucks */}
                 <Routes>
-                  <Route path="/" element={<Truck1 />} />
+                  {/* <Route path="/" element={<Truck1 />} /> */}
                   <Route path="/truck1" element={<Truck1 />} />
                   <Route path="/truck2" element={<Truck2 />} />
                   <Route path="/truck3" element={<Truck3 />} />
