@@ -234,7 +234,7 @@ function App() {
                 {/* Header with Logo and Navigation */}
                 <div className="w-full max-w-4xl bg-gray-300 p-4 rounded-lg mb-8 flex items-center justify-between">
                   <img src="/Images/jls.svg" alt="Logo" className="w-45 h-16" />
-                  <div className="flex space-x-2 border-[3px] border-purple-400 rounded-xl select-none">
+                  <div className="flex space-x-2 border-[3px] border-green-600 rounded-xl select-none">
                     {[1, 2, 3, 4, 5].map((truck) => (
                       <label
                         key={truck}
@@ -244,7 +244,7 @@ function App() {
                           to={`/truck${truck}`}
                           className={({ isActive }) =>
                             isActive
-                              ? "tracking-widest text-white bg-purple-500 px-4 py-2 rounded-lg transition duration-150 ease-in-out"
+                              ? "tracking-widest text-white bg-green-500 px-4 py-2 rounded-lg transition duration-150 ease-in-out"
                               : "tracking-widest text-gray-700 px-4 py-2 rounded-lg transition duration-150 ease-in-out"
                           }
                         >

@@ -377,8 +377,8 @@ const ExportControls = ({ rows }) => {
           onClick={generatePDF}
           className={`h-10 px-4 ${
             !exportType
-              ? "bg-gray-400 cursor-not-allowed"
-              : "bg-indigo-600 hover:bg-indigo-700"
+              ? "bg-green-500 cursor-not-allowed"
+              : "bg-green-600 hover:bg-green-700"
           } text-white rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500`}
           disabled={!exportType}
         >

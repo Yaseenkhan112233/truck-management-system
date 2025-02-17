@@ -1212,12 +1212,12 @@ function Truck1() {
             </button>
             <button
               type="submit"
-              className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+              className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
               disabled={loading}
             >
               {loading ? (
                 <div className="flex items-center">
-                  <div className="animate-spin h-4 w-4 border-t-2 border-b-2 border-white rounded-full mr-2"></div>
+                  <div className="animate-spin h-4 w-4 border-t-2 border-b-2 border-white rounded-full mr-2 "></div>
                   {editMode ? "Updating..." : "Saving..."}
                 </div>
               ) : editMode ? (
